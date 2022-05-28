@@ -1,0 +1,85 @@
+.global _start
+_start:
+LOOP:  LDR R6, =0xFF200020
+       LDR R3, =0xFF200050
+	   LDR R2, [R3]
+       CMP R2, #0b0001
+	   BEQ ZERO
+	   CMP R2, #0b0010
+	   BEQ INCREMENT
+	   CMP R2, #0b0100
+	   BEQ DECREMENT
+	   CMP R2, #0b1000
+	   BEQ BLANKDISPLAY
+	   B LOOP
+	   
+CHECKKEYOFF: //PUSH {R5} 
+             //LDR R3, =0xFF200050
+             LDR R2, [R3]
+             CMP R2, #0b0000
+             BEQ MOVEBACK
+			 BNE CHECKKEYOFF
+	 
+ZERO:  MOV R4, #0
+       BL CHECKKEYOFF
+       B DISPLAY
+
+INCREMENT: CMP R4, #9
+           BEQ LOOP
+		   ADD R4, #1
+		   BL CHECKKEYOFF
+		   B DISPLAY
+		   
+
+DECREMENT: CMP R4, #0
+           BEQ LOOP
+		   SUB R4, #1
+		   BL CHECKKEYOFF
+		   B DISPLAY
+
+BLANKDISPLAY: MOV R4, #0
+              STR R4, [R6]
+	          LDR R2, =0xFF200030
+			  STR R4, [R2]
+			  B CHECKKEYON
+			  
+CHECKKEYON:  LDR R6, =0xFF200050
+       LDR R2, [R6]
+       CMP R2, #0B0001
+	   BEQ RESET
+	   CMP R2, #0B0010
+	   BEQ RESET
+	   CMP R2, #0B0100
+	   BEQ RESET
+	   //CMP R2, #0B1000
+	   //BEQ RESET
+	   B CHECKKEYON
+	   
+RESET: MOV R4, #0
+       BL CHECKKEYOFF
+       B DISPLAY
+			  
+DISPLAY: LDR R6, =0xFF200020
+         CMP R3, #0
+         MOV R0, R4
+         BL SEG7_CODE
+		 STR R0, [R6]
+		 
+		 LDR R2, =0xFF200030
+		 MOV R0, #0
+		 STR R0, [R2]
+		 B LOOP
+
+	
+SEG7_CODE:// PUSH {R0, R1, LR}
+           MOV R1, #BIT_CODES
+           ADD R1, R0
+		   LDRB R0, [R1]
+		   //POP {R0, R1, LR}
+		   MOV PC, LR
+BIT_CODES: .byte 0b00111111, 0b00000110, 0b01011011, 0b01001111, 0b01100110
+.byte 0b01101101, 0b01111101, 0b00000111, 0b01111111, 0b01100111
+.skip   2      // pad with 2 bytes to maintain word alignment
+
+MOVEBACK://POP {R5}
+MOV PC, LR
